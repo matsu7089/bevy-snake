@@ -33,6 +33,9 @@ struct SnakeSegments(Vec<Entity>);
 #[derive(Default, Deref, DerefMut)]
 struct LastTailPosition(Option<Position>);
 
+#[derive(Deref, DerefMut)]
+struct LastDirection(Direction);
+
 struct GrowthEvent;
 struct GameOverEvent;
 
@@ -119,7 +122,11 @@ fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
 }
 
 /// キー入力でSnakeの進行方向を変える
-fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
+fn snake_movement_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    last_direction: Res<LastDirection>,
+    mut heads: Query<&mut SnakeHead>,
+) {
     if let Some(mut head) = heads.iter_mut().next() {
         let dir: Direction = if keyboard_input.pressed(KeyCode::Left) {
             Direction::Left
@@ -132,8 +139,8 @@ fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&m
         } else {
             head.direction
         };
-        // 進行方向と逆でなければ方向を変える
-        if dir != head.direction.opposite() {
+        // 最後に進んだ方向と逆でなければ方向を変える
+        if dir != last_direction.opposite() {
             head.direction = dir;
         }
     }
@@ -144,6 +151,7 @@ fn snake_movement(
     segments: ResMut<SnakeSegments>,
     mut game_over_writer: EventWriter<GameOverEvent>,
     mut last_tail_position: ResMut<LastTailPosition>,
+    mut last_direction: ResMut<LastDirection>,
     mut heads: Query<(Entity, &SnakeHead)>,
     mut positions: Query<&mut Position>,
 ) {
@@ -168,6 +176,8 @@ fn snake_movement(
                 head_pos.y -= 1;
             }
         };
+
+        *last_direction = LastDirection(head.direction);
 
         if head_pos.x < 0
             || head_pos.y < 0
@@ -257,6 +267,7 @@ fn snake_growth(
 fn game_over(
     mut commands: Commands,
     mut reader: EventReader<GameOverEvent>,
+    mut last_direction: ResMut<LastDirection>,
     segments_res: ResMut<SnakeSegments>,
     food: Query<Entity, With<Food>>,
     segments: Query<Entity, With<SnakeSegment>>,
@@ -266,6 +277,7 @@ fn game_over(
             commands.entity(ent).despawn();
         }
         spawn_snake(commands, segments_res);
+        *last_direction = LastDirection(Direction::Up);
     }
 }
 
@@ -291,6 +303,7 @@ fn main() {
         // ゲーム全体で利用できる値を追加
         .insert_resource(SnakeSegments::default())
         .insert_resource(LastTailPosition::default())
+        .insert_resource(LastDirection(Direction::Up))
         // システムで利用するイベントの追加
         .add_event::<GrowthEvent>()
         .add_event::<GameOverEvent>()
