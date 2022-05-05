@@ -1,0 +1,14 @@
+{
+  "name": "bevy-snake",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "cargo watch -q -x run",
+    "build:wasm": "cargo build --release && wasm-bindgen --out-dir ./pkg/ --target web ./target/wasm32-unknown-unknown/release/bevy-snake.wasm",
+    "build:parcel": "parcel build ./static/index.html",
+    "build": "yarn build:wasm && yarn build:parcel"
+  },
+  "devDependencies": {
+    "parcel": "^2.5.0"
+  },
+  "private": true
+}
